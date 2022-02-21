@@ -1,26 +1,38 @@
 version: '3'
 services:
+  redis-server:
+    container_name: nr_redis
+    image: redis:alpine
+    restart: unless-stopped
+    networks:
+      - redis_server
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./redis-data:/data
   web:
-    build: ./app
-    restart: always
     container_name: nr_node
+    build: ./app
+    restart: unless-stopped
     command: npm start
+    depends_on:
+      - redis-server
     volumes:
       - ./app:/usr/app
       - /usr/app/node_modules
     ports:
       - "9000:9000"
-    depends_on:
-      - redis
+    networks:
+      - node_server
+      - redis_server
     environment:
       PORT: 9000
-    links:
-      - "redis:redis"
-  redis:
-    image: redis:alpine
-    restart: always
-    container_name: nr_redis
-#    ports:
-#      - "6379:6379"
-    volumes:
-      - ./redis-data:/data
+      REDIS_URL: redis://redis-server:6379
+
+networks:
+  redis_server:
+    external: true
+    #driver: bridge
+  node_server:
+    external: true
+    #driver: bridge
