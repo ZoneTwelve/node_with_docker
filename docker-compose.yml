@@ -1,38 +1,63 @@
-version: '3'
+version: '3.0'
+
 services:
-  redis-server:
-    container_name: nr_redis
+  sql:
+    container_name: "sealhub_sql"
+    image: mysql:8.0
+    networks: 
+      - sealnet
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "${SQL_ROOT_PASSWORD}"
+      MYSQL_DATABASE: "${SQL_DATABASE}"
+      MYSQL_USER: "${SQL_USERNAME}"
+      MYSQL_PASSWORD: "${SQL_PASSWORD}"
+    volumes:
+      - ./sql/mysql-data:/var/lib/mysql
+      - ./sql/mysql-files:/var/lib/mysql-files
+  cache:
+    container_name: "sealhub_cache"
     image: redis:alpine
-    restart: unless-stopped
     networks:
-      - redis_server
+      - sealnet
     ports:
       - "6379:6379"
     volumes:
-      - ./redis-data:/data
-  web:
-    container_name: nr_node
-    build: ./app
+      - ./cache/data:/data
+      - ./cache/conf:/usr/local/etc/redis
+    restart: unless-stopped
+  app:
+    container_name: "sealhub"
+    networks:
+      - sealnet
+    #depends_on:
+    #  - sql
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+      args:
+        SQL_HOST: sql
+        SQL_USERNAME: "${SQL_USERNAME}"
+        SQL_PASSWORD: "${SQL_PASSWORD}"
+        SQL_DATABASE: "${SQL_DATABASE}"
+    environment:
+      PROTOCOL: "${APP_PROTOCOL}"
+      HTTP_PORT: "${APP_HTTP_PORT}"
+      SQL_HOST: "${SQL_HOST:-sql}"
+      SQL_USERNAME: "${SQL_USERNAME}"
+      SQL_PASSWORD: "${SQL_PASSWORD}"
+      SQL_DATABASE: "${SQL_DATABASE}"
+    volumes:
+      - ./app:/usr/src/app
+      - ./ssl:/usr/src/app/ssl
+      - /usr/src/app/node_modules
+    ports:
+      - "${APP_HTTP_PORT:-80}:8000"
+      - "${APP_HTTPS_PORT:-443}:8443"
     restart: unless-stopped
     command: npm start
-    depends_on:
-      - redis-server
-    volumes:
-      - ./app:/usr/app
-      - /usr/app/node_modules
-    ports:
-      - "9000:9000"
-    networks:
-      - node_server
-      - redis_server
-    environment:
-      PORT: 9000
-      REDIS_URL: redis://redis-server:6379
 
 networks:
-  redis_server:
+  sealnet:
     external: true
-    #driver: bridge
-  node_server:
-    external: true
-    #driver: bridge

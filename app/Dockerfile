@@ -1,5 +1,6 @@
-FROM node:16.14.0
-WORKDIR /usr/app
-COPY package.json .
-RUN npm install --quiet
+FROM node:18.12.1
+WORKDIR /usr/src/app
 COPY . .
+ARG SQL_HOST
+RUN echo $SQL_HOST
+RUN npm install --quiet

@@ -1,22 +1,13 @@
+#!/usr/bin/env node
 const http = require("http");
-const PORT = (parseInt(process.env.PORT) || 9000);
-const { createClient } = require('redis');
+const express = require("express");
 
-(async () => {
-  const client = createClient();
+const app = express();
 
-  client.on('error', (err) => console.log('Redis Client Error', err));
+var count = 0;
 
-  await client.connect();
+app.get("/", (req, res) => {
+  res.send(`This website visit ${++count} times.`);
+});
 
-  await client.set('key', 'value');
-  const value = await client.get('key');
-
-  http.createServer( (req, res) => {
-    console.log(`[HTTP] ${(req.method+"    ").substr(0,6)} ${req.url}`);
-    res.end(`Hello World!\n`);
-  } ).listen( PORT, () => {
-    console.log("Server is ready");
-  } );
-})();
-
+http.createServer(app).listen(process.env.HTTP_PORT || 8000);
